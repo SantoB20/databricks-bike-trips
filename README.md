@@ -68,7 +68,7 @@ See the full [Data Dictionary](./data_dictionary.md).
 
 ### Local Development
 
-- Python 3.12 or later (the notebooks use f-strings with nested quotes, a Python 3.12 feature)
+- Python 3.12 or later
 - Java 17 or later (required by PySpark 4.x to run Spark locally)
 - Git
 - Python libraries listed in [requirements.txt](requirements.txt):
