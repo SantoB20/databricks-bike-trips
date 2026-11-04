@@ -1,0 +1,145 @@
+resources:
+  jobs:
+    bikes_pipeline:
+      name: bikes_pipeline
+      schedule:
+        quartz_cron_expression: 0 0 0 28 * ?
+        timezone_id: America/Bogota
+        pause_status: UNPAUSED
+      tasks:
+        - task_key: chicago_ingest_bike_trips
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/00_landing/ingest_bike_trips
+            base_parameters:
+              city: chicago
+            source: WORKSPACE
+        - task_key: chicago_ingest_stations_lookup
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/00_landing/ingest_stations_lookup
+            base_parameters:
+              city: chicago
+            source: WORKSPACE
+        - task_key: continue_chicago_bike_trips
+          depends_on:
+            - task_key: chicago_ingest_bike_trips
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.chicago_ingest_bike_trips.values.continue_downstream}}"
+            right: Yes
+        - task_key: chicago_bike_trips_raw
+          depends_on:
+            - task_key: continue_chicago_bike_trips
+              outcome: "true"
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/01_bronze/bike_trips_raw
+            base_parameters:
+              city: chicago
+            source: WORKSPACE
+        - task_key: continue_chicago_stations_lookup
+          depends_on:
+            - task_key: chicago_ingest_stations_lookup
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.chicago_ingest_stations_lookup.values.continue_downstream}}"
+            right: Yes
+        - task_key: chicago_stations_lookup_raw
+          depends_on:
+            - task_key: continue_chicago_stations_lookup
+              outcome: "true"
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/01_bronze/stations_lookup_raw
+            base_parameters:
+              city: chicago
+            source: WORKSPACE
+        - task_key: san_francisco_ingest_bike_trips
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/00_landing/ingest_bike_trips
+            base_parameters:
+              city: san_francisco
+            source: WORKSPACE
+        - task_key: continue_san_francisco_bike_trips
+          depends_on:
+            - task_key: san_francisco_ingest_bike_trips
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.san_francisco_ingest_bike_trips.values.continue_downstream}}"
+            right: Yes
+        - task_key: san_francisco_bike_trips_raw
+          depends_on:
+            - task_key: continue_san_francisco_bike_trips
+              outcome: "true"
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/01_bronze/bike_trips_raw
+            base_parameters:
+              city: san_francisco
+            source: WORKSPACE
+        - task_key: bike_trips_cleansed
+          depends_on:
+            - task_key: chicago_bike_trips_raw
+            - task_key: san_francisco_bike_trips_raw
+          run_if: AT_LEAST_ONE_SUCCESS
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/02_silver/bike_trips_cleansed
+            source: WORKSPACE
+        - task_key: san_francisco_ingest_stations_lookup
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/00_landing/ingest_stations_lookup
+            base_parameters:
+              city: san_francisco
+            source: WORKSPACE
+        - task_key: continue_san_francisco_stations_lookup
+          depends_on:
+            - task_key: san_francisco_ingest_stations_lookup
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.san_francisco_ingest_stations_lookup.values.continue_downstream}\
+              }"
+            right: Yes
+        - task_key: san_francisco_stations_lookup_raw
+          depends_on:
+            - task_key: continue_san_francisco_stations_lookup
+              outcome: "true"
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/01_bronze/stations_lookup_raw
+            base_parameters:
+              city: san_francisco
+            source: WORKSPACE
+        - task_key: stations_lookup
+          depends_on:
+            - task_key: chicago_stations_lookup_raw
+            - task_key: san_francisco_stations_lookup_raw
+          run_if: ALL_DONE
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/02_silver/stations_lookup
+            source: WORKSPACE
+        - task_key: bike_trips_enriched
+          depends_on:
+            - task_key: stations_lookup
+            - task_key: bike_trips_cleansed
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/02_silver/bike_trips_enriched
+            source: WORKSPACE
+        - task_key: bike_trip_summary
+          depends_on:
+            - task_key: bike_trips_enriched
+          notebook_task:
+            notebook_path: /path/to/bike-trips/transformations/notebooks/03_gold/daily_trip_summary
+            source: WORKSPACE
+      queue:
+        enabled: true
+      parameters:
+        - name: chicago
+          default: '{        "city_id": "chicago",        "city":
+            "Chicago",        "system": "divvy",        "trips_urls":
+            [            "https://divvy-tripdata.s3.amazonaws.com/($date)-divvy-tripdata.zip",            "https://divvy-tripdata.s3.amazonaws.com/($date)-divvy-tripdata.csv.zip"        ],        "stations_url":
+            "https://gbfs.lyft.com/gbfs/2.3/chi/en/station_information.json"    }'
+        - name: months_ago
+          default: "1"
+        - name: san_francisco
+          default: '{ "city_id": "san_francisco", "city": "San Francisco", "system":
+            "baywheels", "trips_urls": [
+            "https://s3.amazonaws.com/baywheels-data/($date)-baywheels-tripdata.zip",
+            "https://s3.amazonaws.com/baywheels-data/($date)-baywheels-tripdata.csv.zip"
+            ], "stations_url":
+            "https://gbfs.lyft.com/gbfs/2.3/bay/en/station_information.json" }'
+      performance_target: PERFORMANCE_OPTIMIZED
