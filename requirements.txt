@@ -1,0 +1,7 @@
+# Local development dependencies.
+# Databricks Runtime 18 LTS already ships these libraries; this file mirrors
+# them so the modules and notebooks can be developed and linted locally.
+pyspark==4.1.0
+delta-spark==4.1.0
+requests>=2.31
+python-dateutil>=2.8

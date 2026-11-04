@@ -58,23 +58,111 @@ See the full [Data Dictionary](./data_dictionary.md).
 
 ## Requirements
 
+### Databricks
+
+- Databricks workspace with **Unity Catalog** enabled (permissions to create catalogs, schemas and volumes)
 - Databricks Runtime: 18 LTS
 - Apache Spark: 4.1.0
+- Delta Lake (included in the runtime)
 - Languages: Python, SQL
+
+### Local Development
+
+- Python 3.12 or later (the notebooks use f-strings with nested quotes, a Python 3.12 feature)
+- Java 17 or later (required by PySpark 4.x to run Spark locally)
+- Git
+- Python libraries listed in [requirements.txt](requirements.txt):
+
+| Library | Version | Usage |
+| --- | --- | --- |
+| `pyspark` | 4.1.0 | DataFrame transformations in every layer |
+| `delta-spark` | 4.1.0 | `DeltaTable` merges for the SCD Type 2 process |
+| `requests` | >= 2.31 | Downloading trip and station files from the data sources |
+| `python-dateutil` | >= 2.8 | Calculating the target month (`relativedelta`) |
+
+> **Note:** these libraries are pre-installed in Databricks Runtime 18 LTS, so nothing needs to be installed on the cluster. The local environment is only for development.
 
 ## Installation and Setup
 
-<!-- TODO -->
+1. Clone the repository and create the Python environment:
+
+   ```bash
+   git clone https://github.com/SantoB20/databricks-bike-trips.git
+   cd databricks-bike-trips
+   python3 -m venv .venv
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+2. In Databricks, add the repository via **Workspace > Create > Git folder**.
+3. Run [catalog_schemas_volume_setup](one_off/catalog_schemas_volume_setup.ipynb) once to create the `bikes` catalog, its schemas and the `data_sources` volume.
+4. (Optional) Load historical data by running the [initial load](one_off/initial_load/notebooks) notebooks in layer order (`00_landing` → `03_gold`).
+5. Replace `/path/to/bike-trips` in the [pipeline configuration](transformations/bikes_pipeline.yaml) with your Git folder path, then go to **Jobs & Pipelines > Create > Job > Edit as YAML**, paste it and save.
 
 ## Project Structure
 
-<!-- TODO -->
+```text
+databricks-bike-trips/
+├── ad_hoc/
+│   └── pipeline_results_eda.ipynb
+├── img/
+│   ├── data_architecture.png
+│   ├── high_level_diagram.png
+│   └── low_level_diagram.png
+├── modules/
+│   ├── data/
+│   │   ├── bulk_read.py
+│   │   └── file_download.py
+│   ├── transformation/
+│   │   ├── geography.py
+│   │   └── metadata.py
+│   └── utils/
+│       └── date.py
+├── one_off/
+│   ├── catalog_schemas_volume_setup.ipynb
+│   └── initial_load/
+│       └── notebooks/
+│           ├── 00_landing/
+│           │   ├── backfill_bike_stations.ipynb
+│           │   └── backfill_historical_bike_trips.ipynb
+│           ├── 01_bronze/
+│           │   ├── bike_trips_raw.ipynb
+│           │   └── stations_lookup_raw.ipynb
+│           ├── 02_silver/
+│           │   ├── bike_trips_cleansed.ipynb
+│           │   ├── bike_trips_enriched.ipynb
+│           │   └── stations_lookup.ipynb
+│           └── 03_gold/
+│               └── daily_trip_summary.ipynb
+├── transformations/
+│   ├── bikes_pipeline.yaml
+│   └── notebooks/
+│       ├── 00_landing/
+│       │   ├── ingest_bike_trips.ipynb
+│       │   └── ingest_stations_lookup.ipynb
+│       ├── 01_bronze/
+│       │   ├── bike_trips_raw.ipynb
+│       │   └── stations_lookup_raw.ipynb
+│       ├── 02_silver/
+│       │   ├── bike_trips_cleansed.ipynb
+│       │   ├── bike_trips_enriched.ipynb
+│       │   └── stations_lookup.ipynb
+│       └── 03_gold/
+│           └── daily_trip_summary.ipynb
+├── data_dictionary.md
+├── requirements.txt
+└── README.md
+```
 
 ## Future Improvements
 
 - Reflect San Francisco's rebranding from **Bay Wheels** to **Lyft Bike**.
 - Add other US public bike-share systems, such as [Citi Bike](https://citibikenyc.com/system-data) (New York–New Jersey), [Capital Bikeshare](https://capitalbikeshare.com/system-data) (Washington, D.C.) and [Bluebikes](https://bluebikes.com/system-data) (Boston).
 - Join bike trips data with pricing plans.
+- Partition (or apply liquid clustering to) the trips tables by `city` and date, as the number of implemented cities grows.
+- Join bike trips data with weather data to analyze how conditions affect demand.
+- Add more Gold layer reports, such as most popular stations, frequent origin–destination routes and usage by hour of day.
+- Add data quality validations with Lakeflow Declarative Pipelines (DLT) expectations.
 
 ## Contact Me
 
