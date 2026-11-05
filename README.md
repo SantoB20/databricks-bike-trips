@@ -164,6 +164,10 @@ databricks-bike-trips/
 - Add more Gold layer reports, such as most popular stations, frequent origin–destination routes and usage by hour of day.
 - Add data quality validations with Lakeflow Declarative Pipelines (DLT) expectations.
 
+## Acknowledgements
+
+This project was built by applying the knowledge gained from the course [Azure Databricks and Spark SQL (Python)](https://www.udemy.com/course/azure-databricks-and-spark-sql-python) on Udemy.
+
 ## Contact Me
 
 If you're passionate about technology, or if you're looking for a dedicated Systems Engineer, let's connect! Feel free to send me a message.
