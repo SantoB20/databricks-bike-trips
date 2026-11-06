@@ -5,13 +5,13 @@ def haversine_distance(lat1, lon1, lat2, lon2):
   Calculate the Haversine distance (in miles) between two geographic coordinates.
 
   Parameters:
-    lat1 (float): Latitude of the first point.
-    lon1 (float): Longitude of the first point.
-    lat2 (float): Latitude of the second point.
-    lon2 (float): Longitude of the second point.
+    lat1 (Column): Latitude of the first point.
+    lon1 (Column): Longitude of the first point.
+    lat2 (Column): Latitude of the second point.
+    lon2 (Column): Longitude of the second point.
 
   Returns:
-    float: Distance between the two points in miles.
+    Column: Distance between the two points in miles.
   """
   EARTH_RADIUS = 3958.8
 
